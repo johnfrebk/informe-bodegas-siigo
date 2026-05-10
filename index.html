@@ -1,0 +1,1574 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Informe de Bodegas SIIGO</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #5c667a;
+      --line: #d6dce8;
+      --panel: #ffffff;
+      --bg: #f4f6fa;
+      --siigo-blue: #99ccff;
+      --accent: #1f6feb;
+      --danger: #b42318;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      overflow: hidden;
+    }
+
+    header {
+      background: var(--siigo-blue);
+      border-bottom: 1px solid #78aee4;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    h1 {
+      font-size: 20px;
+      line-height: 1.2;
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .status {
+      color: #24364f;
+      font-size: 13px;
+      min-height: 18px;
+      text-align: right;
+    }
+
+    .toolbar {
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      padding: 12px 18px;
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) auto auto auto auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    input[type="file"],
+    input[type="search"],
+    input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 14px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    button {
+      border: 1px solid #1b5bb8;
+      background: var(--accent);
+      color: white;
+      border-radius: 6px;
+      padding: 9px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    button.secondary {
+      background: #fff;
+      color: var(--ink);
+      border-color: var(--line);
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 380px minmax(0, 1fr);
+      min-height: 0;
+      transition: grid-template-columns .18s ease;
+    }
+
+    main.sidebar-collapsed {
+      grid-template-columns: 0 minmax(0, 1fr);
+    }
+
+    aside {
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      min-height: 0;
+      overflow: auto;
+      transition: opacity .18s ease, visibility .18s ease;
+    }
+
+    main.sidebar-collapsed aside {
+      opacity: 0;
+      visibility: hidden;
+      overflow: hidden;
+      border-right: 0;
+    }
+
+    .aside-head {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--panel);
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      gap: 10px;
+    }
+
+    .aside-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    .count {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .config-list {
+      display: grid;
+      gap: 8px;
+      padding: 12px 14px 18px;
+    }
+
+    .bodega-row {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: auto auto 1fr;
+      gap: 8px 10px;
+      align-items: center;
+      background: #fff;
+    }
+
+    .bodega-row.dragging {
+      opacity: .55;
+      outline: 2px solid var(--accent);
+    }
+
+    .bodega-row.drag-over {
+      border-top: 3px solid var(--accent);
+    }
+
+    .bodega-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+    }
+
+    .bodega-meta {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .drag-handle {
+      width: 28px;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f7f9fc;
+      color: var(--muted);
+      display: grid;
+      place-items: center;
+      padding: 0;
+      cursor: grab;
+      user-select: none;
+      font-weight: 700;
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .content {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+    }
+
+    .result-tools {
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      padding: 10px 14px;
+      display: grid;
+      grid-template-columns: minmax(260px, 460px) minmax(120px, 1fr);
+      gap: 10px;
+      align-items: center;
+    }
+
+    .result-tools .hint {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .summary {
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      padding: 10px 14px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcff;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 18px;
+    }
+
+    .table-wrap {
+      min-height: 0;
+      overflow: scroll;
+      padding: 14px;
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    table {
+      border-collapse: collapse;
+      background: #fff;
+      min-width: max-content;
+      box-shadow: 0 0 0 1px var(--line);
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 6px 8px;
+      font-size: 13px;
+      line-height: 1.25;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--siigo-blue);
+      text-align: center;
+      font-weight: 700;
+    }
+
+    th:first-child,
+    td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: #d9e1f2;
+      min-width: 320px;
+      max-width: 520px;
+    }
+
+    th:first-child {
+      z-index: 3;
+      background: var(--siigo-blue);
+    }
+
+    td.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      min-width: 92px;
+    }
+
+    .empty {
+      padding: 34px;
+      color: var(--muted);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .error {
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .busy-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(244, 246, 250, .72);
+      backdrop-filter: blur(2px);
+    }
+
+    .busy-overlay.active {
+      display: flex;
+    }
+
+    .busy-box {
+      min-width: 280px;
+      max-width: 420px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 14px 34px rgba(23, 32, 51, .16);
+      padding: 18px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid #d6e9ff;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .85s linear infinite;
+    }
+
+    .busy-title {
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .busy-message {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 980px) {
+      .toolbar,
+      main,
+      .summary,
+      .result-tools {
+        grid-template-columns: 1fr;
+      }
+
+      aside {
+        max-height: 42vh;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      main.sidebar-collapsed {
+        grid-template-columns: 1fr;
+      }
+
+      main.sidebar-collapsed aside {
+        display: none;
+      }
+
+      .result-tools .hint {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Informe de Bodegas SIIGO</h1>
+      <div id="status" class="status">Carga un archivo .xlsx de SIIGO.</div>
+    </header>
+
+    <section class="toolbar">
+      <input id="fileInput" type="file" accept=".xlsx">
+      <button id="toggleConfigBtn" class="secondary">Ocultar bodegas</button>
+      <button id="runBtn" disabled>Ejecutar</button>
+      <button id="csvBtn" class="secondary" disabled>Exportar Excel</button>
+      <button id="resetBtn" class="secondary" disabled>Restaurar nombres</button>
+    </section>
+
+    <main id="mainLayout">
+      <aside>
+        <div class="aside-head">
+          <div class="aside-title">
+            <h2>Configuracion de bodegas</h2>
+            <span id="bodegaCount" class="count">0 bodegas</span>
+          </div>
+          <input id="configSearch" type="search" placeholder="Buscar codigo o nombre">
+        </div>
+        <div id="configList" class="config-list">
+          <div class="empty">Las bodegas apareceran aqui despues de cargar el archivo.</div>
+        </div>
+      </aside>
+
+      <section class="content">
+        <div class="summary">
+          <div class="metric"><span>Productos</span><strong id="metricProducts">0</strong></div>
+          <div class="metric"><span>Bodegas detectadas</span><strong id="metricWarehouses">0</strong></div>
+          <div class="metric"><span>Bodegas visibles</span><strong id="metricVisible">0</strong></div>
+          <div class="metric"><span>Saldo total visible</span><strong id="metricTotal">0</strong></div>
+        </div>
+        <div class="result-tools">
+          <input id="productSearch" type="search" placeholder="Buscar producto">
+          <div id="productFilterHint" class="hint">Sin filtro de producto</div>
+        </div>
+        <div class="table-wrap" id="tableWrap">
+          <div class="empty">El resultado se mostrara aqui.</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="busyOverlay" class="busy-overlay" aria-live="polite" aria-busy="true">
+    <div class="busy-box">
+      <div class="spinner"></div>
+      <div>
+        <div class="busy-title">Procesando</div>
+        <div id="busyMessage" class="busy-message">Preparando informe...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const els = {
+      fileInput: document.getElementById('fileInput'),
+      mainLayout: document.getElementById('mainLayout'),
+      toggleConfigBtn: document.getElementById('toggleConfigBtn'),
+      runBtn: document.getElementById('runBtn'),
+      csvBtn: document.getElementById('csvBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      status: document.getElementById('status'),
+      configSearch: document.getElementById('configSearch'),
+      productSearch: document.getElementById('productSearch'),
+      productFilterHint: document.getElementById('productFilterHint'),
+      busyOverlay: document.getElementById('busyOverlay'),
+      busyMessage: document.getElementById('busyMessage'),
+      configList: document.getElementById('configList'),
+      bodegaCount: document.getElementById('bodegaCount'),
+      tableWrap: document.getElementById('tableWrap'),
+      metricProducts: document.getElementById('metricProducts'),
+      metricWarehouses: document.getElementById('metricWarehouses'),
+      metricVisible: document.getElementById('metricVisible'),
+      metricTotal: document.getElementById('metricTotal')
+    };
+
+    const state = {
+      workbookRows: [],
+      header: null,
+      warehouses: [],
+      config: {},
+      result: null,
+      currentFileKey: '',
+      currentWorkbookBase64: '',
+      currentWorkbookName: ''
+    };
+
+    const colors = [
+      '#fff2cc', '#fce4d6', '#d9e1f2', '#d0e0e3', '#ead1dc', '#f4cccc',
+      '#d9ead3', '#ffe599', '#b4c6e7', '#fcd5b4', '#b8cce4', '#d8e4bc',
+      '#da9694', '#c4d79b', '#95b3d7', '#e6b8b7', '#c6e0b4', '#f8cbad'
+    ];
+
+    const lastWorkbookKey = 'siigo-bodegas-last-workbook-v1';
+
+    els.fileInput.addEventListener('change', loadSelectedFile);
+    els.toggleConfigBtn.addEventListener('click', toggleConfigPanel);
+    els.runBtn.addEventListener('click', generateReport);
+    els.csvBtn.addEventListener('click', exportExcel);
+    els.resetBtn.addEventListener('click', resetConfig);
+    els.configSearch.addEventListener('input', renderConfig);
+    els.productSearch.addEventListener('input', applyProductFilter);
+    restoreLastWorkbook();
+
+    function toggleConfigPanel() {
+      const collapsed = els.mainLayout.classList.toggle('sidebar-collapsed');
+      els.toggleConfigBtn.textContent = collapsed ? 'Mostrar bodegas' : 'Ocultar bodegas';
+    }
+
+    async function loadSelectedFile() {
+      const file = els.fileInput.files[0];
+      if (!file) return;
+
+      try {
+        showBusy('Leyendo archivo de SIIGO...');
+        state.workbookRows = [];
+        state.header = null;
+        state.warehouses = [];
+        state.config = {};
+        state.result = null;
+        els.runBtn.disabled = true;
+        els.csvBtn.disabled = true;
+        setStatus('Leyendo archivo...');
+        const buffer = await file.arrayBuffer();
+        await loadWorkbookBuffer(buffer, file.name, false);
+      } catch (error) {
+        state.workbookRows = [];
+        state.header = null;
+        state.warehouses = [];
+        state.config = {};
+        state.result = null;
+        renderConfig();
+        renderEmptyResult('No se pudo cargar el archivo. Revisa que sea el informe de saldos por bodega de SIIGO.');
+        setStatus(error.message, true);
+        els.runBtn.disabled = true;
+        els.csvBtn.disabled = true;
+        els.resetBtn.disabled = true;
+      } finally {
+        hideBusy();
+      }
+    }
+
+    async function loadWorkbookBuffer(buffer, fileName, restored) {
+      showBusy(restored ? 'Recuperando ultimo informe guardado...' : 'Analizando estructura del informe...');
+      await nextFrame();
+      const workbook = await readXlsx(buffer);
+      const rows = workbook.rows;
+      const header = detectHeader(rows);
+
+      if (!header) {
+        throw new Error('No se encontro una fila con los encabezados BOD y SALDO PRODUCTO.');
+      }
+
+      state.workbookRows = rows;
+      state.header = header;
+      state.currentFileKey = 'siigo-bodegas-config-v1';
+      state.currentWorkbookBase64 = arrayBufferToBase64(buffer);
+      state.currentWorkbookName = fileName || 'ultimo_informe_siigo.xlsx';
+      state.warehouses = detectWarehouses(rows, header);
+      state.config = buildConfig(state.warehouses);
+      state.result = null;
+
+      renderConfig();
+      renderEmptyResult(restored ? 'Ultimo informe recuperado. Puedes revisar la tabla o ejecutar de nuevo.' : 'Archivo cargado. Ajusta nombres/visibilidad y presiona Ejecutar.');
+      els.productSearch.value = '';
+      els.productFilterHint.textContent = 'Sin filtro de producto';
+      els.runBtn.disabled = false;
+      els.resetBtn.disabled = false;
+      els.csvBtn.disabled = true;
+      updateMetrics(null);
+
+      if (restored) {
+        await generateReport(true);
+      } else {
+        setStatus(`Archivo listo: ${state.warehouses.length} bodegas detectadas y configurables.`);
+      }
+    }
+
+    async function restoreLastWorkbook() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(lastWorkbookKey) || 'null');
+        if (!saved || !saved.base64) return;
+
+        showBusy('Cargando ultimo informe guardado...');
+        setStatus('Recuperando ultimo informe...');
+        const buffer = base64ToArrayBuffer(saved.base64);
+        await loadWorkbookBuffer(buffer, saved.name || 'ultimo_informe_siigo.xlsx', true);
+      } catch (error) {
+        localStorage.removeItem(lastWorkbookKey);
+        setStatus('No se pudo recuperar el ultimo informe guardado.', true);
+      } finally {
+        hideBusy();
+      }
+    }
+
+    async function readXlsx(buffer) {
+      const files = await unzip(buffer);
+      const workbookXml = textFile(files, 'xl/workbook.xml');
+      const workbookRelsXml = textFile(files, 'xl/_rels/workbook.xml.rels');
+      const sharedStringsXml = files.has('xl/sharedStrings.xml') ? textFile(files, 'xl/sharedStrings.xml') : '';
+      const sheetPath = firstSheetPath(workbookXml, workbookRelsXml);
+      const sheetXml = textFile(files, sheetPath);
+      const sharedStrings = parseSharedStrings(sharedStringsXml);
+      return { rows: parseSheet(sheetXml, sharedStrings) };
+    }
+
+    async function unzip(buffer) {
+      const bytes = new Uint8Array(buffer);
+      const entries = new Map();
+      const eocdOffset = findEndOfCentralDirectory(bytes);
+      const cdSize = readUInt32(bytes, eocdOffset + 12);
+      const cdOffset = readUInt32(bytes, eocdOffset + 16);
+      let offset = cdOffset;
+      const end = cdOffset + cdSize;
+
+      while (offset < end) {
+        if (readUInt32(bytes, offset) !== 0x02014b50) break;
+        const method = readUInt16(bytes, offset + 10);
+        const compressedSize = readUInt32(bytes, offset + 20);
+        const uncompressedSize = readUInt32(bytes, offset + 24);
+        const nameLen = readUInt16(bytes, offset + 28);
+        const extraLen = readUInt16(bytes, offset + 30);
+        const commentLen = readUInt16(bytes, offset + 32);
+        const localOffset = readUInt32(bytes, offset + 42);
+        const name = decodeBytes(bytes.slice(offset + 46, offset + 46 + nameLen));
+
+        const localNameLen = readUInt16(bytes, localOffset + 26);
+        const localExtraLen = readUInt16(bytes, localOffset + 28);
+        const dataOffset = localOffset + 30 + localNameLen + localExtraLen;
+        const compressed = bytes.slice(dataOffset, dataOffset + compressedSize);
+
+        if (!name.endsWith('/')) {
+          entries.set(name, await inflateEntry(compressed, method, uncompressedSize));
+        }
+
+        offset += 46 + nameLen + extraLen + commentLen;
+      }
+
+      return entries;
+    }
+
+    function findEndOfCentralDirectory(bytes) {
+      for (let i = bytes.length - 22; i >= 0; i--) {
+        if (readUInt32(bytes, i) === 0x06054b50) return i;
+      }
+      throw new Error('El archivo no parece ser un .xlsx valido.');
+    }
+
+    async function inflateEntry(compressed, method) {
+      if (method === 0) return compressed;
+      if (method !== 8) throw new Error('El .xlsx usa un metodo de compresion no soportado.');
+      if (!('DecompressionStream' in window)) {
+        throw new Error('Este navegador no soporta la lectura local de .xlsx. Prueba con Chrome o Edge actualizado.');
+      }
+
+      const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+
+    function firstSheetPath(workbookXml, relsXml) {
+      const parser = new DOMParser();
+      const workbookDoc = parser.parseFromString(workbookXml, 'application/xml');
+      const relsDoc = parser.parseFromString(relsXml, 'application/xml');
+      const sheet = workbookDoc.getElementsByTagName('sheet')[0];
+      if (!sheet) throw new Error('El libro no contiene hojas.');
+      const relId = sheet.getAttribute('r:id') || sheet.getAttribute('id');
+      const rels = Array.from(relsDoc.getElementsByTagName('Relationship'));
+      const rel = rels.find(item => item.getAttribute('Id') === relId);
+      if (!rel) throw new Error('No se pudo ubicar la primera hoja del libro.');
+      const target = rel.getAttribute('Target').replace(/^\/?xl\//, '');
+      return 'xl/' + target.replace(/^\/+/, '');
+    }
+
+    function parseSharedStrings(xmlText) {
+      if (!xmlText) return [];
+      const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+      return Array.from(doc.getElementsByTagName('si')).map(si =>
+        Array.from(si.getElementsByTagName('t')).map(t => t.textContent).join('')
+      );
+    }
+
+    function parseSheet(xmlText, sharedStrings) {
+      const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+      const rows = [];
+      for (const rowNode of Array.from(doc.getElementsByTagName('row'))) {
+        const rowIndex = Number(rowNode.getAttribute('r') || rows.length + 1) - 1;
+        const row = rows[rowIndex] || [];
+
+        for (const cell of Array.from(rowNode.getElementsByTagName('c'))) {
+          const ref = cell.getAttribute('r') || '';
+          const colIndex = columnIndex(ref.replace(/[0-9]/g, ''));
+          row[colIndex] = readCell(cell, sharedStrings);
+        }
+
+        rows[rowIndex] = row;
+      }
+      return Array.from({ length: rows.length }, (_, index) => rows[index] || []);
+    }
+
+    function readCell(cell, sharedStrings) {
+      const type = cell.getAttribute('t');
+      if (type === 'inlineStr') {
+        return Array.from(cell.getElementsByTagName('t')).map(t => t.textContent).join('');
+      }
+
+      const valueNode = cell.getElementsByTagName('v')[0];
+      const value = valueNode ? valueNode.textContent : '';
+
+      if (type === 's') return sharedStrings[Number(value)] || '';
+      if (type === 'b') return value === '1';
+      if (type === 'str') return value;
+      if (value === '') return '';
+
+      const num = Number(value);
+      return Number.isNaN(num) ? value : num;
+    }
+
+    function detectHeader(rows) {
+      for (let r = 0; r < Math.min(rows.length, 40); r++) {
+        const normalized = (rows[r] || []).map(normalize);
+        const bod = normalized.indexOf('BOD');
+        const saldo = normalized.indexOf('SALDO PRODUCTO');
+        if (bod >= 0 && saldo >= 0) {
+          return {
+            row: r,
+            bodegaCode: bod,
+            bodegaName: normalized.indexOf('DESCRIPCION BODEGA') >= 0 ? normalized.indexOf('DESCRIPCION BODEGA') : 2,
+            product: normalized.indexOf('DESCRIPCION') >= 0 ? normalized.indexOf('DESCRIPCION') : 11,
+            saldo
+          };
+        }
+      }
+      return null;
+    }
+
+    function detectWarehouses(rows, header) {
+      const map = new Map();
+      for (let r = header.row + 1; r < rows.length; r++) {
+        const row = rows[r];
+        const code = cleanCode(row[header.bodegaCode]);
+        const name = cleanText(row[header.bodegaName]);
+        if (!code) continue;
+        if (!map.has(code)) {
+          map.set(code, {
+            code,
+            sourceName: name || `Bodega ${code}`,
+            count: 0
+          });
+        }
+        map.get(code).count++;
+      }
+      return Array.from(map.values()).sort((a, b) => Number(a.code) - Number(b.code));
+    }
+
+    function buildConfig(warehouses) {
+      const saved = loadConfig();
+      const config = {};
+      applySavedWarehouseOrder(warehouses, saved.__order || []);
+
+      warehouses.forEach((warehouse, index) => {
+        const prior = saved[warehouse.code] || {};
+        config[warehouse.code] = {
+          code: warehouse.code,
+          sourceName: warehouse.sourceName,
+          displayName: prior.displayName || defaultName(warehouse),
+          visible: prior.visible !== undefined ? prior.visible : true,
+          color: prior.color || colors[index % colors.length]
+        };
+      });
+      return config;
+    }
+
+    function applySavedWarehouseOrder(warehouses, savedOrder) {
+      if (!Array.isArray(savedOrder) || !savedOrder.length) return;
+
+      const positions = new Map(savedOrder.map((code, index) => [String(code), index]));
+      warehouses.sort((a, b) => {
+        const aPos = positions.has(a.code) ? positions.get(a.code) : Number.MAX_SAFE_INTEGER;
+        const bPos = positions.has(b.code) ? positions.get(b.code) : Number.MAX_SAFE_INTEGER;
+        if (aPos !== bPos) return aPos - bPos;
+        return Number(a.code) - Number(b.code);
+      });
+    }
+
+    function defaultName(warehouse) {
+      const known = {
+        '12': 'Cucuta auxiliar',
+        '13': 'Auxiliar',
+        '14': 'Auxiliar 2'
+      };
+      return known[warehouse.code] || titleCase(warehouse.sourceName);
+    }
+
+    function renderConfig() {
+      const term = normalize(els.configSearch.value || '');
+      const rows = state.warehouses.filter(warehouse => {
+        const cfg = state.config[warehouse.code];
+        return !term || normalize(warehouse.code + ' ' + warehouse.sourceName + ' ' + cfg.displayName).includes(term);
+      });
+
+      els.bodegaCount.textContent = `${state.warehouses.length} bodegas detectadas`;
+
+      if (!rows.length) {
+        els.configList.innerHTML = '<div class="empty">No hay bodegas para mostrar.</div>';
+        return;
+      }
+
+      els.configList.innerHTML = '';
+      rows.forEach(warehouse => {
+        const cfg = state.config[warehouse.code];
+        const row = document.createElement('div');
+        row.className = 'bodega-row';
+        row.draggable = true;
+        row.dataset.code = warehouse.code;
+        row.innerHTML = `
+          <div class="drag-handle" title="Arrastrar para ordenar">::</div>
+          <input type="checkbox" ${cfg.visible ? 'checked' : ''} data-kind="visible" data-code="${escapeAttr(warehouse.code)}">
+          <div>
+            <input type="text" value="${escapeAttr(cfg.displayName)}" data-kind="name" data-code="${escapeAttr(warehouse.code)}">
+            <div class="bodega-meta">Codigo ${escapeHtml(warehouse.code)} · ${escapeHtml(warehouse.sourceName)} · ${warehouse.count} registros</div>
+          </div>
+        `;
+        row.style.borderLeft = `8px solid ${cfg.color}`;
+        els.configList.appendChild(row);
+      });
+
+      els.configList.querySelectorAll('input').forEach(input => {
+        input.addEventListener('change', updateConfigFromInput);
+        input.addEventListener('input', updateConfigFromInput);
+      });
+      els.configList.querySelectorAll('.bodega-row').forEach(row => {
+        row.addEventListener('dragstart', handleWarehouseDragStart);
+        row.addEventListener('dragover', handleWarehouseDragOver);
+        row.addEventListener('dragleave', handleWarehouseDragLeave);
+        row.addEventListener('drop', handleWarehouseDrop);
+        row.addEventListener('dragend', handleWarehouseDragEnd);
+      });
+    }
+
+    function handleWarehouseDragStart(event) {
+      const row = event.currentTarget;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', row.dataset.code);
+      row.classList.add('dragging');
+    }
+
+    function handleWarehouseDragOver(event) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      event.currentTarget.classList.add('drag-over');
+    }
+
+    function handleWarehouseDragLeave(event) {
+      event.currentTarget.classList.remove('drag-over');
+    }
+
+    async function handleWarehouseDrop(event) {
+      event.preventDefault();
+      const targetRow = event.currentTarget;
+      targetRow.classList.remove('drag-over');
+
+      const draggedCode = event.dataTransfer.getData('text/plain');
+      const targetCode = targetRow.dataset.code;
+      if (!draggedCode || !targetCode || draggedCode === targetCode) return;
+
+      await moveWarehouseToPosition(draggedCode, targetCode);
+    }
+
+    function handleWarehouseDragEnd() {
+      els.configList.querySelectorAll('.bodega-row').forEach(row => {
+        row.classList.remove('dragging', 'drag-over');
+      });
+    }
+
+    async function moveWarehouseToPosition(draggedCode, targetCode) {
+      const fromIndex = state.warehouses.findIndex(warehouse => warehouse.code === draggedCode);
+      const toIndex = state.warehouses.findIndex(warehouse => warehouse.code === targetCode);
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+
+      const [item] = state.warehouses.splice(fromIndex, 1);
+      state.warehouses.splice(toIndex, 0, item);
+
+      if (state.result) {
+        showBusy('Actualizando orden de bodegas...');
+        await nextFrame();
+      }
+
+      saveConfig();
+      renderConfig();
+
+      if (state.result) {
+        renderReport();
+        updateMetrics(state.result);
+        hideBusy();
+      }
+    }
+
+    async function updateConfigFromInput(event) {
+      const input = event.target;
+      const code = input.dataset.code;
+      const cfg = state.config[code];
+      if (!cfg) return;
+
+      if (input.dataset.kind === 'visible') cfg.visible = input.checked;
+      if (input.dataset.kind === 'name') cfg.displayName = input.value.trim() || cfg.sourceName;
+      if (state.result) {
+        showBusy(input.dataset.kind === 'visible' ? 'Actualizando bodegas visibles...' : 'Actualizando nombres de bodegas...');
+        await nextFrame();
+      }
+      saveConfig();
+      if (state.result) {
+        renderReport();
+        updateMetrics(state.result);
+        hideBusy();
+      }
+    }
+
+    function resetConfig() {
+      localStorage.removeItem(state.currentFileKey);
+      state.warehouses.sort((a, b) => Number(a.code) - Number(b.code));
+      state.config = buildConfig(state.warehouses);
+      renderConfig();
+      if (state.result) {
+        renderReport();
+        updateMetrics(state.result);
+      }
+      setStatus('Configuracion restaurada.');
+    }
+
+    async function generateReport(restored = false) {
+      try {
+        if (!state.header || !state.workbookRows.length) {
+          throw new Error('Primero carga un archivo valido de SIIGO antes de ejecutar.');
+        }
+
+        showBusy(restored ? 'Reconstruyendo reporte anterior...' : 'Generando reporte de bodegas...');
+        await nextFrame();
+        setStatus('Generando reporte...');
+        const products = new Map();
+        const totalsByProduct = new Map();
+
+        for (let r = state.header.row + 1; r < state.workbookRows.length; r++) {
+          const row = state.workbookRows[r];
+          const code = cleanCode(row[state.header.bodegaCode]);
+          const product = cleanText(row[state.header.product]);
+          const value = toNumber(row[state.header.saldo]);
+
+          if (!code || !product) continue;
+          if (!products.has(product)) products.set(product, {});
+          const productRow = products.get(product);
+          productRow[code] = (productRow[code] || 0) + value;
+          totalsByProduct.set(product, (totalsByProduct.get(product) || 0) + value);
+        }
+
+        const productNames = Array.from(products.keys()).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+
+        state.result = {
+          productNames,
+          products
+        };
+
+        renderReport();
+        updateMetrics(state.result);
+        els.csvBtn.disabled = false;
+        saveLastWorkbook();
+        setStatus(restored ? `Ultimo informe recuperado: ${productNames.length} productos.` : `Reporte generado: ${productNames.length} productos.`);
+      } catch (error) {
+        setStatus(error.message, true);
+      } finally {
+        hideBusy();
+      }
+    }
+
+    function renderReport() {
+      const { products } = state.result;
+      const productNames = filteredProductNames();
+      const visibleWarehouses = currentVisibleWarehouses();
+
+      if (!productNames.length || !visibleWarehouses.length) {
+        renderEmptyResult('No hay datos visibles con la configuracion actual.');
+        updateProductFilterHint(productNames.length);
+        return;
+      }
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const tbody = document.createElement('tbody');
+      const headRow = document.createElement('tr');
+
+      headRow.appendChild(th('PRODUCTOS'));
+      visibleWarehouses.forEach(w => headRow.appendChild(th(state.config[w.code].displayName)));
+      headRow.appendChild(th('TOTAL'));
+      thead.appendChild(headRow);
+
+      productNames.forEach(product => {
+        const rowData = products.get(product);
+        const tr = document.createElement('tr');
+        tr.appendChild(td(product));
+        let total = 0;
+
+        visibleWarehouses.forEach(w => {
+          const value = rowData[w.code] || 0;
+          total += value;
+          const cell = td(formatNumber(value), 'num');
+          cell.style.background = state.config[w.code].color;
+          tr.appendChild(cell);
+        });
+
+        const totalCell = td(formatNumber(total), 'num');
+        totalCell.style.background = '#c6efce';
+        totalCell.style.fontWeight = '700';
+        tr.appendChild(totalCell);
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(thead);
+      table.appendChild(tbody);
+      els.tableWrap.innerHTML = '';
+      els.tableWrap.appendChild(table);
+      updateProductFilterHint(productNames.length);
+    }
+
+    function updateMetrics(result) {
+      const visible = state.warehouses.filter(w => state.config[w.code]?.visible).length;
+      const products = result ? filteredProductNames() : [];
+      els.metricProducts.textContent = products.length.toLocaleString('es-CO');
+      els.metricWarehouses.textContent = state.warehouses.length.toLocaleString('es-CO');
+      els.metricVisible.textContent = visible.toLocaleString('es-CO');
+      els.metricTotal.textContent = result ? formatNumber(filteredTotal(products)) : '0';
+    }
+
+    function exportExcel() {
+      if (!state.result) return;
+      const { products } = state.result;
+      const productNames = filteredProductNames();
+      const visibleWarehouses = currentVisibleWarehouses();
+      const blob = buildXlsxBlob(productNames, visibleWarehouses, products);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'informe_bodegas_siigo.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function buildXlsxBlob(productNames, visibleWarehouses, products) {
+      const files = {
+        '[Content_Types].xml': contentTypesXml(),
+        '_rels/.rels': rootRelsXml(),
+        'xl/workbook.xml': workbookXml(),
+        'xl/_rels/workbook.xml.rels': workbookRelsXml(),
+        'xl/styles.xml': stylesXml(visibleWarehouses),
+        'xl/worksheets/sheet1.xml': worksheetXml(productNames, visibleWarehouses, products)
+      };
+
+      return new Blob([zipStore(files)], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+    }
+
+    function worksheetXml(productNames, visibleWarehouses, products) {
+      const totalCol = visibleWarehouses.length + 2;
+      let xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheetViews><sheetView workbookViewId="0"><pane xSplit="1" ySplit="1" topLeftCell="B2" activePane="bottomRight" state="frozen"/></sheetView></sheetViews>
+<cols><col min="1" max="1" width="58" customWidth="1"/>`;
+
+      for (let col = 2; col <= totalCol; col++) {
+        xml += `<col min="${col}" max="${col}" width="16" customWidth="1"/>`;
+      }
+
+      xml += `</cols><sheetData><row r="1">`;
+      xml += inlineStringCell('A1', 'PRODUCTOS', 1);
+      visibleWarehouses.forEach((warehouse, index) => {
+        xml += inlineStringCell(cellRef(index + 2, 1), state.config[warehouse.code].displayName, 1);
+      });
+      xml += inlineStringCell(cellRef(totalCol, 1), 'TOTAL', 1);
+      xml += `</row>`;
+
+      productNames.forEach((product, rowIndex) => {
+        const rowNumber = rowIndex + 2;
+        const rowData = products.get(product);
+        let total = 0;
+        xml += `<row r="${rowNumber}">`;
+        xml += inlineStringCell(`A${rowNumber}`, product, 2);
+
+        visibleWarehouses.forEach((warehouse, index) => {
+          const value = rowData[warehouse.code] || 0;
+          total += value;
+          xml += numberCell(cellRef(index + 2, rowNumber), value, warehouseStyleIndex(index, value));
+        });
+
+        xml += numberCell(cellRef(totalCol, rowNumber), total, totalStyleIndex(total));
+        xml += `</row>`;
+      });
+
+      return xml + `</sheetData><autoFilter ref="A1:${cellRef(totalCol, Math.max(productNames.length + 1, 1))}"/></worksheet>`;
+    }
+
+    function stylesXml(visibleWarehouses) {
+      const fills = ['99CCFF', 'D9E1F2', 'C6EFCE', ...visibleWarehouses.map(w => hexColor(state.config[w.code].color))];
+      let xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.##########"/></numFmts>
+<fonts count="2"><font><sz val="11"/><name val="Arial"/></font><font><b/><sz val="11"/><name val="Arial"/></font></fonts>
+<fills count="${fills.length + 2}"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>`;
+
+      fills.forEach(color => {
+        xml += `<fill><patternFill patternType="solid"><fgColor rgb="FF${color}"/><bgColor indexed="64"/></patternFill></fill>`;
+      });
+
+      xml += `</fills>
+<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFD6DCE8"/></left><right style="thin"><color rgb="FFD6DCE8"/></right><top style="thin"><color rgb="FFD6DCE8"/></top><bottom style="thin"><color rgb="FFD6DCE8"/></bottom><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="${visibleWarehouses.length * 2 + 5}">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1"/>
+<xf numFmtId="3" fontId="1" fillId="4" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>
+<xf numFmtId="164" fontId="1" fillId="4" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>`;
+
+      visibleWarehouses.forEach((_, index) => {
+        xml += `<xf numFmtId="3" fontId="0" fillId="${5 + index}" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>`;
+        xml += `<xf numFmtId="164" fontId="0" fillId="${5 + index}" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>`;
+      });
+
+      return xml + `</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+    }
+
+    function contentTypesXml() {
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
+    }
+
+    function rootRelsXml() {
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+    }
+
+    function workbookXml() {
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Informe Bodegas" sheetId="1" r:id="rId1"/></sheets></workbook>`;
+    }
+
+    function workbookRelsXml() {
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+    }
+
+    function inlineStringCell(ref, value, style) {
+      return `<c r="${ref}" t="inlineStr" s="${style}"><is><t>${escapeXml(value)}</t></is></c>`;
+    }
+
+    function numberCell(ref, value, style) {
+      return `<c r="${ref}" s="${style}"><v>${excelNumber(value)}</v></c>`;
+    }
+
+    function totalStyleIndex(value) {
+      return isWholeNumber(value) ? 3 : 4;
+    }
+
+    function warehouseStyleIndex(index, value) {
+      return 5 + index * 2 + (isWholeNumber(value) ? 0 : 1);
+    }
+
+    function isWholeNumber(value) {
+      const num = Number(value);
+      return Number.isFinite(num) && Math.abs(num - Math.trunc(num)) < 0.0000000001;
+    }
+
+    function zipStore(files) {
+      const encoder = new TextEncoder();
+      const localParts = [];
+      const centralParts = [];
+      const fileNames = Object.keys(files);
+      let offset = 0;
+
+      Object.entries(files).forEach(([name, content]) => {
+        const nameBytes = encoder.encode(name);
+        const data = encoder.encode(content);
+        const crc = crc32(data);
+        const local = new Uint8Array(30 + nameBytes.length);
+        const localView = new DataView(local.buffer);
+
+        localView.setUint32(0, 0x04034b50, true);
+        localView.setUint16(4, 20, true);
+        localView.setUint16(8, 0, true);
+        localView.setUint32(14, crc, true);
+        localView.setUint32(18, data.length, true);
+        localView.setUint32(22, data.length, true);
+        localView.setUint16(26, nameBytes.length, true);
+        local.set(nameBytes, 30);
+        localParts.push(local, data);
+
+        const central = new Uint8Array(46 + nameBytes.length);
+        const centralView = new DataView(central.buffer);
+        centralView.setUint32(0, 0x02014b50, true);
+        centralView.setUint16(4, 20, true);
+        centralView.setUint16(6, 20, true);
+        centralView.setUint32(16, crc, true);
+        centralView.setUint32(20, data.length, true);
+        centralView.setUint32(24, data.length, true);
+        centralView.setUint16(28, nameBytes.length, true);
+        centralView.setUint32(42, offset, true);
+        central.set(nameBytes, 46);
+        centralParts.push(central);
+
+        offset += local.length + data.length;
+      });
+
+      const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+      const end = new Uint8Array(22);
+      const endView = new DataView(end.buffer);
+      endView.setUint32(0, 0x06054b50, true);
+      endView.setUint16(8, fileNames.length, true);
+      endView.setUint16(10, fileNames.length, true);
+      endView.setUint32(12, centralSize, true);
+      endView.setUint32(16, offset, true);
+
+      return concatBytes([...localParts, ...centralParts, end]);
+    }
+
+    function concatBytes(parts) {
+      const total = parts.reduce((sum, part) => sum + part.length, 0);
+      const output = new Uint8Array(total);
+      let offset = 0;
+
+      parts.forEach(part => {
+        output.set(part, offset);
+        offset += part.length;
+      });
+
+      return output;
+    }
+
+    function crc32(bytes) {
+      let crc = 0xffffffff;
+
+      for (let i = 0; i < bytes.length; i++) {
+        crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 0xff];
+      }
+
+      return (crc ^ 0xffffffff) >>> 0;
+    }
+
+    const crcTable = (() => {
+      const table = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let j = 0; j < 8; j++) {
+          c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+        }
+        table[i] = c >>> 0;
+      }
+      return table;
+    })();
+
+    function cellRef(col, row) {
+      let letters = '';
+      let n = col;
+
+      while (n > 0) {
+        const rem = (n - 1) % 26;
+        letters = String.fromCharCode(65 + rem) + letters;
+        n = Math.floor((n - 1) / 26);
+      }
+
+      return letters + row;
+    }
+
+    function hexColor(value) {
+      return String(value || '#ffffff').replace('#', '').toUpperCase().padStart(6, 'F').slice(0, 6);
+    }
+
+    function escapeXml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&apos;'
+      }[char]));
+    }
+
+    function applyProductFilter() {
+      if (!state.result) {
+        els.productFilterHint.textContent = els.productSearch.value.trim() ? 'Carga y ejecuta un informe para filtrar.' : 'Sin filtro de producto';
+        return;
+      }
+
+      renderReport();
+      updateMetrics(state.result);
+    }
+
+    function currentVisibleWarehouses() {
+      return state.warehouses.filter(w => state.config[w.code]?.visible);
+    }
+
+    function filteredProductNames() {
+      if (!state.result) return [];
+      const term = normalize(els.productSearch.value || '');
+      if (!term) return state.result.productNames;
+      return state.result.productNames.filter(product => normalize(product).includes(term));
+    }
+
+    function filteredTotal(productNames) {
+      const visibleWarehouses = currentVisibleWarehouses();
+      return productNames.reduce((sum, product) => {
+        const row = state.result.products.get(product);
+        return sum + visibleWarehouses.reduce((acc, w) => acc + (row[w.code] || 0), 0);
+      }, 0);
+    }
+
+    function updateProductFilterHint(visibleCount) {
+      const term = els.productSearch.value.trim();
+      if (!state.result) {
+        els.productFilterHint.textContent = 'Sin filtro de producto';
+      } else if (!term) {
+        els.productFilterHint.textContent = 'Sin filtro de producto';
+      } else {
+        els.productFilterHint.textContent = `${visibleCount.toLocaleString('es-CO')} productos encontrados`;
+      }
+    }
+
+    function buildExcelHtml(productNames, visibleWarehouses, products) {
+      const headerStyle = 'background:#99ccff;font-weight:bold;text-align:center;border:1px solid #d6dce8;';
+      const productStyle = 'background:#d9e1f2;border:1px solid #d6dce8;';
+      const totalStyle = 'background:#c6efce;font-weight:bold;text-align:right;border:1px solid #d6dce8;mso-number-format:"\\#\\,\\#\\#0\\.##########";';
+      const numberBase = 'text-align:right;border:1px solid #d6dce8;mso-number-format:"\\#\\,\\#\\#0\\.##########";';
+      const textBase = 'border:1px solid #d6dce8;';
+
+      let html = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office"
+              xmlns:x="urn:schemas-microsoft-com:office:excel"
+              xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="utf-8">
+          <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+          <x:Name>Informe Bodegas</x:Name>
+          <x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>1</x:SplitHorizontal><x:TopRowBottomPane>1</x:TopRowBottomPane><x:ActivePane>2</x:ActivePane></x:WorksheetOptions>
+          </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+        </head>
+        <body>
+          <table style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:10pt;">
+            <thead>
+              <tr>
+                <th style="${headerStyle}width:360px;">PRODUCTOS</th>
+                ${visibleWarehouses.map(w => `<th style="${headerStyle}width:110px;">${escapeHtml(state.config[w.code].displayName)}</th>`).join('')}
+                <th style="${headerStyle}width:110px;">TOTAL</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      productNames.forEach(product => {
+        const rowData = products.get(product);
+        let total = 0;
+        html += `<tr><td style="${productStyle}">${escapeHtml(product)}</td>`;
+
+        visibleWarehouses.forEach(w => {
+          const value = rowData[w.code] || 0;
+          total += value;
+          const cfg = state.config[w.code];
+          html += `<td x:num="${excelNumber(value)}" style="${numberBase}background:${cfg.color};">${formatNumber(value)}</td>`;
+        });
+
+        html += `<td x:num="${excelNumber(total)}" style="${totalStyle}">${formatNumber(total)}</td></tr>`;
+      });
+
+      html += `
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `;
+
+      return html;
+    }
+
+    function renderEmptyResult(message) {
+      els.tableWrap.innerHTML = `<div class="empty">${escapeHtml(message)}</div>`;
+    }
+
+    function saveConfig() {
+      if (!state.currentFileKey) return;
+      const payload = { ...state.config, __order: state.warehouses.map(warehouse => warehouse.code) };
+      localStorage.setItem(state.currentFileKey, JSON.stringify(payload));
+      updateMetrics(state.result);
+    }
+
+    function saveLastWorkbook() {
+      if (!state.currentWorkbookBase64) return;
+
+      try {
+        localStorage.setItem(lastWorkbookKey, JSON.stringify({
+          name: state.currentWorkbookName,
+          base64: state.currentWorkbookBase64,
+          savedAt: new Date().toISOString()
+        }));
+      } catch (error) {
+        setStatus('El reporte se genero, pero el navegador no tiene espacio para guardar el ultimo Excel.', true);
+      }
+    }
+
+    function loadConfig() {
+      try {
+        return JSON.parse(localStorage.getItem(state.currentFileKey) || '{}');
+      } catch {
+        return {};
+      }
+    }
+
+    function arrayBufferToBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      const chunkSize = 32768;
+      let binary = '';
+
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.slice(i, i + chunkSize));
+      }
+
+      return btoa(binary);
+    }
+
+    function base64ToArrayBuffer(base64) {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+
+      return bytes.buffer;
+    }
+
+    function th(text) {
+      const cell = document.createElement('th');
+      cell.textContent = text;
+      return cell;
+    }
+
+    function td(text, className) {
+      const cell = document.createElement('td');
+      cell.textContent = text;
+      if (className) cell.className = className;
+      return cell;
+    }
+
+    function readUInt16(bytes, offset) {
+      return bytes[offset] | (bytes[offset + 1] << 8);
+    }
+
+    function readUInt32(bytes, offset) {
+      return (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+    }
+
+    function decodeBytes(bytes) {
+      return new TextDecoder('utf-8').decode(bytes);
+    }
+
+    function textFile(files, path) {
+      if (!files.has(path)) throw new Error(`No se encontro ${path} dentro del .xlsx.`);
+      return decodeBytes(files.get(path));
+    }
+
+    function columnIndex(col) {
+      let index = 0;
+      for (let i = 0; i < col.length; i++) {
+        index = index * 26 + col.charCodeAt(i) - 64;
+      }
+      return index - 1;
+    }
+
+    function normalize(value) {
+      return cleanText(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    }
+
+    function cleanText(value) {
+      return String(value ?? '').replace(/\s+/g, ' ').trim();
+    }
+
+    function cleanCode(value) {
+      const text = cleanText(value);
+      if (!text) return '';
+      const num = Number(text);
+      return Number.isFinite(num) ? String(num) : text.replace(/^0+/, '') || text;
+    }
+
+    function toNumber(value) {
+      if (typeof value === 'number') return value;
+      const text = cleanText(value).replace(/\./g, '').replace(',', '.');
+      const num = Number(text);
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function formatNumber(value) {
+      return Number(value).toLocaleString('es-CO', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 10
+      });
+    }
+
+    function numberForCsv(value) {
+      return String(Number(value).toLocaleString('es-CO', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 10,
+        useGrouping: false
+      }));
+    }
+
+    function excelNumber(value) {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return '0';
+      return String(Number(num.toFixed(10)));
+    }
+
+    function csvCell(value) {
+      const text = String(value ?? '');
+      return '"' + text.replace(/"/g, '""') + '"';
+    }
+
+    function titleCase(value) {
+      return cleanText(value).toLowerCase().replace(/\b\p{L}/gu, char => char.toUpperCase());
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value);
+    }
+
+    function setStatus(message, isError = false) {
+      els.status.textContent = message;
+      els.status.className = isError ? 'status error' : 'status';
+    }
+
+    function showBusy(message) {
+      els.busyMessage.textContent = message || 'Procesando...';
+      els.busyOverlay.classList.add('active');
+    }
+
+    function hideBusy() {
+      els.busyOverlay.classList.remove('active');
+    }
+
+    function nextFrame() {
+      return new Promise(resolve => requestAnimationFrame(() => resolve()));
+    }
+  </script>
+</body>
+</html>
